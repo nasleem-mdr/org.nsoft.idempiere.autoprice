@@ -1,4 +1,4 @@
-package org.custom.idempiere.autoprice.model;
+package org.soft.idempiere.autoprice.model;
 
 import java.sql.ResultSet;
 import java.util.Properties;
