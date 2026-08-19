@@ -1,4 +1,4 @@
-package com.custom.validator;
+package org.nsoft.idempiere.autoprice.validator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
