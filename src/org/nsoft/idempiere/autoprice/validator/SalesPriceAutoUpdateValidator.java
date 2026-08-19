@@ -40,21 +40,27 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
         return null; // Tidak digunakan
     }
 
-    @Override
-    public String modelChange(PO po, int type) throws Exception {
-        // Trigger jalan pada event AFTER_CHANGE saat dokumen diselesaikan
-        if (po instanceof MOrder && type == TYPE_AFTER_CHANGE) {
-            MOrder order = (MOrder) po;
+@Override
+public String modelChange(PO po, int type) throws Exception {
+    if (po instanceof MOrder && type == TYPE_AFTER_CHANGE) {
+        MOrder order = (MOrder) po;
 
-            // Pastikan transaksi adalah PO (IsSOTrx = 'N') dan statusnya baru saja Completed ('CO')
-            if (!order.isSOTrx() && MOrder.DOCSTATUS_Completed.equals(order.getDocStatus()) 
-                    && order.is_ValueChanged(MOrder.COLUMNNAME_DocStatus)) {
-                
-                updateSalesPriceList(order);
+        if (!order.isSOTrx() && order.is_ValueChanged(MOrder.COLUMNNAME_DocStatus)) {
+            String docStatus = order.getDocStatus();
+            
+            // 1. Jika PO Complete -> Hitung harga dari PO ini
+            if (MOrder.DOCSTATUS_Completed.equals(docStatus)) {
+                updateSalesPriceList(order, false);
+            } 
+            // 2. Jika PO di-Void/Reversed -> Rollback ke PO sebelumnya
+            else if (MOrder.DOCSTATUS_Voided.equals(docStatus) 
+                  || MOrder.DOCSTATUS_Reversed.equals(docStatus)) {
+                updateSalesPriceList(order, true);
             }
         }
-        return null;
     }
+    return null;
+}
 
     @Override
     public String docValidate(PO po, int timing) {
