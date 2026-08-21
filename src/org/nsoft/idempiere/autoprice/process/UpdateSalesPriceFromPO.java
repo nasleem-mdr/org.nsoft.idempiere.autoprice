@@ -1,23 +1,51 @@
+/***********************************************************************
+* This file is part of iDempiere ERP Open Source                     *
+* http://www.idempiere.org                                            *
+*                                                                       *
+* Copyright (C) Contributors                                          *
+*                                                                       *
+* This program is free software; you can redistribute it and/or      *
+* modify it under the terms of the GNU General Public License        *
+* as published by the Free Software Foundation; either version 2     *
+* of the License, or (at your option) any later version.             *
+*                                                                       *
+* This program is distributed in the hope that it will be useful,    *
+* but WITHOUT ANY WARRANTY; without even the implied warranty of     *
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the       *
+* GNU General Public License for more details.                       *
+*                                                                       *
+* You should have received a copy of the GNU General Public License  *
+* along with this program; if not, write to the Free Software        *
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,         *
+* MA 02110-1301, USA.                                                 *
+*                                                                       *
+* Contributors:                                                       *
+* - Nasleem Mdr - Nsoft                                               *
+**********************************************************************/
+
 package org.nsoft.idempiere.autoprice.process;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import org.compiere.model.MProduct;
 import org.compiere.model.MProductPrice;
-import org.compiere.process.SVR_Process;
+import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
+import org.compiere.util.Env;
+import org.nsoft.idempiere.autoprice.util.PriceRoundingUtil;
 
-public class UpdateSalesPriceFromPO extends SVR_Process {
+public class UpdateSalesPriceFromPO extends SvrProcess {
 
     @Override
     protected void prepare() {
-        // Tempat mengambil parameter jika process dijalankan dengan window filter
+    	// Where to get parameters if the process is run with a window filter
     }
 
     @Override
     protected String doIt() throws Exception {
-        // 1. Ambil semua Sales Price List Version aktif yang bertanda IsAutoUpdateFromPO = 'Y'
+    	// 1. Get all active Sales Price List Versions marked with IsAutoUpdateFromPO = 'Y'
         String sqlPLV = "SELECT M_PriceList_Version_ID FROM M_PriceList_Version WHERE IsAutoUpdateFromPO='Y' AND IsActive='Y'";
         
         int updatedCount = 0;
@@ -31,7 +59,7 @@ public class UpdateSalesPriceFromPO extends SVR_Process {
             while (rsPLV.next()) {
                 int plvID = rsPLV.getInt("M_PriceList_Version_ID");
 
-                // 2. Query PO terakhir per produk yang memiliki MarkupPercent
+                // 2. Query the last PO per product that has MarkupPercent
                 String sqlPO = "SELECT p.M_Product_ID, p.MarkupPercent, ol.PriceActual "
                         + "FROM M_Product p "
                         + "JOIN C_OrderLine ol ON ol.M_Product_ID = p.M_Product_ID "
@@ -53,11 +81,16 @@ public class UpdateSalesPriceFromPO extends SVR_Process {
                     BigDecimal markup = rs.getBigDecimal("MarkupPercent");
                     BigDecimal lastPOPrice = rs.getBigDecimal("PriceActual");
 
-                    // Formulasi: Sales Price = PO Price * (1 + (Markup / 100))
+                    // Formulas: Sales Price = PO Price * (1 + (Markup / 100))
                     BigDecimal multiplier = BigDecimal.ONE.add(markup.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-                    BigDecimal newSalesPrice = lastPOPrice.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal rawPrice = lastPOPrice.multiply(multiplier);
 
-                    // 3. Upsert data ke M_ProductPrice
+                    // Get the rounding rule (List reference) from M_Product, then apply it
+                    MProduct product = new MProduct(Env.getCtx(), productID, get_TrxName());
+                    String roundingType = product.get_ValueAsString("RoundingType");
+                    BigDecimal newSalesPrice = PriceRoundingUtil.applyRounding(rawPrice, roundingType);
+
+                    // 3. Upsert data to M_ProductPrice
                     MProductPrice pp = MProductPrice.get(getCtx(), plvID, productID, get_TrxName());
                     if (pp == null) {
                         pp = new MProductPrice(getCtx(), plvID, productID, get_TrxName());

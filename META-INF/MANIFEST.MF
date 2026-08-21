@@ -1,14 +1,14 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Auto Price Update from PO
-Bundle-SymbolicName: org.custom.idempiere.autoprice;singleton:=true
+Bundle-SymbolicName: org.nsoft.idempiere.autoprice;singleton:=true
 Bundle-Version: 13.0.0.qualifier
 Bundle-Vendor: Custom
-Bundle-RequiredExecutionEnvironment: JavaSE-21
+Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: org.adempiere.base;bundle-version="13.0.0"
 Service-Component: OSGI-INF/*.xml
-Export-Package: org.custom.idempiere.autoprice.factory,
- org.custom.idempiere.autoprice.model,
- org.custom.idempiere.autoprice.process,
- org.custom.idempiere.autoprice.util,
- org.custom.idempiere.autoprice.validator
+Export-Package: org.nsoft.idempiere.autoprice.factory,
+ org.nsoft.idempiere.autoprice.model,
+ org.nsoft.idempiere.autoprice.process,
+ org.nsoft.idempiere.autoprice.util,
+ org.nsoft.idempiere.autoprice.validator

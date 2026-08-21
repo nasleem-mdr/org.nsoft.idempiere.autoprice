@@ -23,38 +23,43 @@
 * - Nasleem Mdr - Nsoft                                               *
 **********************************************************************/
 
-package org.nsoft.idempiere.autoprice.factory;
+package org.nsoft.idempiere.autoprice.util;
 
-import java.sql.ResultSet;
-import org.adempiere.base.IModelFactory;
-import org.compiere.model.PO;
-import org.compiere.util.Env;
-import org.nsoft.idempiere.autoprice.model.MXXPriceHistory;
-import org.nsoft.idempiere.autoprice.model.X_XX_PriceHistory;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-public class CustomModelFactory implements IModelFactory {
+public class PriceRoundingUtil {
 
-    @Override
-    public Class<?> getClass(String tableName) {
-        if (X_XX_PriceHistory.Table_Name.equals(tableName)) {
-            return MXXPriceHistory.class;
+	/**
+	* Rounds up based on the product's rounding rules.
+	* If roundingType is null, no special rounding is performed (returns to the base price, 2 decimal places).
+	*
+	* Example: increment=1000 -> price 100.455 rounded up to the nearest multiple of 1000 = 1000
+	* increment=100 -> price 1450 rounded up to the nearest multiple of 100 = 1500
+	*/
+    public static BigDecimal applyRounding(BigDecimal price, String roundingType) {
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            return price;
         }
-        return null;
-    }
 
-    @Override
-    public PO getPO(String tableName, int Record_ID, String trxName) {
-        if (X_XX_PriceHistory.Table_Name.equals(tableName)) {
-            return new MXXPriceHistory(Env.getCtx(), Record_ID, trxName);
+        // If roundingType is NULL / empty / not filled -> No special rounding
+        if (roundingType == null || roundingType.trim().isEmpty()) {
+            return price.setScale(2, RoundingMode.HALF_UP);
         }
-        return null;
-    }
 
-    @Override
-    public PO getPO(String tableName, ResultSet rs, String trxName) {
-        if (X_XX_PriceHistory.Table_Name.equals(tableName)) {
-            return new MXXPriceHistory(Env.getCtx(), rs, trxName);
+        try {
+            BigDecimal increment = new BigDecimal(roundingType.trim());
+            if (increment.compareTo(BigDecimal.ZERO) <= 0) {
+                return price.setScale(2, RoundingMode.HALF_UP);
+            }
+
+            // Multiple Round Up Formula: CEIL(Price / Increment) * Increment
+            BigDecimal divided = price.divide(increment, 0, RoundingMode.CEILING);
+            return divided.multiply(increment).setScale(2, RoundingMode.HALF_UP);
+
+        } catch (NumberFormatException e) {
+        	// If the number format in the reference is invalid
+            return price.setScale(2, RoundingMode.HALF_UP);
         }
-        return null;
     }
 }

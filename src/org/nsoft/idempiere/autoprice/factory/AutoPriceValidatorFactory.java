@@ -22,38 +22,27 @@
 * Contributors:                                                       *
 * - Nasleem Mdr - Nsoft                                               *
 **********************************************************************/
-
 package org.nsoft.idempiere.autoprice.factory;
 
-import java.sql.ResultSet;
-import org.adempiere.base.IModelFactory;
-import org.compiere.model.PO;
-import org.compiere.util.Env;
-import org.nsoft.idempiere.autoprice.model.MXXPriceHistory;
-import org.nsoft.idempiere.autoprice.model.X_XX_PriceHistory;
+import org.adempiere.base.IModelValidatorFactory;
+import org.compiere.model.ModelValidator;
+import org.nsoft.idempiere.autoprice.validator.SalesPriceAutoUpdateValidator;
 
-public class CustomModelFactory implements IModelFactory {
-
-    @Override
-    public Class<?> getClass(String tableName) {
-        if (X_XX_PriceHistory.Table_Name.equals(tableName)) {
-            return MXXPriceHistory.class;
-        }
-        return null;
-    }
+/**
+* Factory connecting ModelValidationEngine (via Core.getModelValidator)
+* with the custom ModelValidator implementation in this plugin.
+*
+* Required for the custom ModelValidator class to be loaded from the OSGi bundle;
+* registering the class as an OSGi ModelValidator service directly is not sufficient, 
+* as ModelValidationEngine performs lookup through * IModelValidatorFactory, not a direct 
+* service lookup.
+*/
+public class AutoPriceValidatorFactory implements IModelValidatorFactory {
 
     @Override
-    public PO getPO(String tableName, int Record_ID, String trxName) {
-        if (X_XX_PriceHistory.Table_Name.equals(tableName)) {
-            return new MXXPriceHistory(Env.getCtx(), Record_ID, trxName);
-        }
-        return null;
-    }
-
-    @Override
-    public PO getPO(String tableName, ResultSet rs, String trxName) {
-        if (X_XX_PriceHistory.Table_Name.equals(tableName)) {
-            return new MXXPriceHistory(Env.getCtx(), rs, trxName);
+    public ModelValidator newModelValidatorInstance(String className) {
+        if (SalesPriceAutoUpdateValidator.class.getName().equals(className)) {
+            return new SalesPriceAutoUpdateValidator();
         }
         return null;
     }
