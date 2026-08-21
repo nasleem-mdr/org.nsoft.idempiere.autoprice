@@ -97,9 +97,8 @@ public class UpdateSalesPriceFromPO extends SvrProcess {
                     }
                     pp.setPriceList(newSalesPrice);
                     pp.setPriceStd(newSalesPrice);
-                    pp.setPriceLimit(newSalesPrice);
+                    pp.setPriceLimit(lastPOPrice);   // batas bawah = harga beli terakhir, bukan harga jual
                     pp.saveEx();
-
                     updatedCount++;
                 }
                 DB.close(rs, pstmt);
