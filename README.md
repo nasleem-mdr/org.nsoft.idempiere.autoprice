@@ -12,5 +12,5 @@ Pack-in
 1. Add new column (isAutoUdatefromPO) on m_pricelist_version
 2. Add Column (MarkupPercent, RoundingType) on M_Product
 3. Add process org.nsoft.idempiere.autoprice.process.updateAutopriceFromPO.
-4. Add validator org.nsoft.idempiere.autoprice.validator.SalesAutoPriceUpdate
+4. Add validator org.nsoft.idempiere.autoprice.validator.SalesPriceAutoUpdateValidator
    
