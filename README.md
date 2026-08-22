@@ -1,4 +1,4 @@
-# org.nsoft.idempiere.autoprice
+# Plugin Sales PriceList Auto Update 
 IDempiere Plugin to Generate auto sales pricelist based on Purchase Order transaction.
 
 For businesses—particularly trading businesses dealing with fluctuating market prices—a system is needed that can automatically update selling prices based on purchase costs. We can apply a specific percentage or a markup to the purchase price.
