@@ -120,7 +120,6 @@ public class UpdateSalesPriceFromPO extends SvrProcess {
         } finally {
             DB.close(rsPLV, pstmtPLV);
         }
-
-        return "Berhasil memperbarui " + updatedCount + " record harga produk pada Sales Pricelist.";
+        return "Successfully updated " + updatedCount + " product price records in the Sales Pricelist.";
     } 
 }
