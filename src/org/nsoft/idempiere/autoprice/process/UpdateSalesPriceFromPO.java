@@ -26,28 +26,28 @@
 package org.nsoft.idempiere.autoprice.process;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Timestamp;
+import org.compiere.model.MPriceList;
+import org.compiere.model.MPriceListVersion;
 import org.compiere.model.MProduct;
 import org.compiere.model.MProductPrice;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
-import org.nsoft.idempiere.autoprice.util.PriceRoundingUtil;
+import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator;
+import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator.PriceResult;
 
 public class UpdateSalesPriceFromPO extends SvrProcess {
 
     @Override
     protected void prepare() {
-    	// Where to get parameters if the process is run with a window filter
     }
 
     @Override
     protected String doIt() throws Exception {
-    	// 1. Get all active Sales Price List Versions marked with IsAutoUpdateFromPO = 'Y'
         String sqlPLV = "SELECT M_PriceList_Version_ID FROM M_PriceList_Version WHERE IsAutoUpdateFromPO='Y' AND IsActive='Y'";
-        
         int updatedCount = 0;
         PreparedStatement pstmtPLV = null;
         ResultSet rsPLV = null;
@@ -59,8 +59,15 @@ public class UpdateSalesPriceFromPO extends SvrProcess {
             while (rsPLV.next()) {
                 int plvID = rsPLV.getInt("M_PriceList_Version_ID");
 
-                // 2. Query the last PO per product that has MarkupPercent
-                String sqlPO = "SELECT p.M_Product_ID, p.MarkupPercent, ol.PriceActual "
+                MPriceListVersion plv = new MPriceListVersion(Env.getCtx(), plvID, get_TrxName());
+                MPriceList priceList = (MPriceList) plv.getM_PriceList();
+                int targetCurrencyID = priceList.getC_Currency_ID();
+                int adClientID = plv.getAD_Client_ID();
+                int adOrgID = plv.getAD_Org_ID();
+                int conversionTypeID = 0;
+
+                String sqlPO = "SELECT p.M_Product_ID, p.MarkupPercent, ol.PriceActual, "
+                        + "o.C_Currency_ID AS po_currency_id, o.DateOrdered "
                         + "FROM M_Product p "
                         + "JOIN C_OrderLine ol ON ol.M_Product_ID = p.M_Product_ID "
                         + "JOIN C_Order o ON o.C_Order_ID = ol.C_Order_ID "
@@ -80,25 +87,32 @@ public class UpdateSalesPriceFromPO extends SvrProcess {
                     int productID = rs.getInt("M_Product_ID");
                     BigDecimal markup = rs.getBigDecimal("MarkupPercent");
                     BigDecimal lastPOPrice = rs.getBigDecimal("PriceActual");
+                    int poCurrencyID = rs.getInt("po_currency_id");
+                    Timestamp dateOrdered = rs.getTimestamp("DateOrdered");
 
-                    // Formulas: Sales Price = PO Price * (1 + (Markup / 100))
-                    BigDecimal multiplier = BigDecimal.ONE.add(markup.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-                    BigDecimal rawPrice = lastPOPrice.multiply(multiplier);
+                    BigDecimal poPriceConverted = SalesPriceCalculator.convertToTargetCurrency(
+                            lastPOPrice, poCurrencyID, targetCurrencyID, dateOrdered,
+                            conversionTypeID, adClientID, adOrgID);
 
-                    // Get the rounding rule (List reference) from M_Product, then apply it
+                    if (poPriceConverted == null) {
+                        log.warning("Tidak ada conversion rate " + poCurrencyID + "->" + targetCurrencyID
+                                + " untuk M_Product_ID=" + productID + ". Dilewati.");
+                        continue;
+                    }
+
                     MProduct product = new MProduct(Env.getCtx(), productID, get_TrxName());
                     String roundingType = product.get_ValueAsString("RoundingType");
-                    BigDecimal newSalesPrice = PriceRoundingUtil.applyRounding(rawPrice, roundingType);
+                    PriceResult result = SalesPriceCalculator.calculate(poPriceConverted, markup, roundingType);
 
-                    // 3. Upsert data to M_ProductPrice
                     MProductPrice pp = MProductPrice.get(getCtx(), plvID, productID, get_TrxName());
                     if (pp == null) {
                         pp = new MProductPrice(getCtx(), plvID, productID, get_TrxName());
                     }
-                    pp.setPriceList(newSalesPrice);
-                    pp.setPriceStd(newSalesPrice);
-                    pp.setPriceLimit(lastPOPrice);   // batas bawah = harga beli terakhir, bukan harga jual
+                    pp.setPriceList(result.salesPrice);
+                    pp.setPriceStd(result.salesPrice);
+                    pp.setPriceLimit(result.priceLimit);
                     pp.saveEx();
+
                     updatedCount++;
                 }
                 DB.close(rs, pstmt);
@@ -107,6 +121,6 @@ public class UpdateSalesPriceFromPO extends SvrProcess {
             DB.close(rsPLV, pstmtPLV);
         }
 
-        return "Update Successfull" + updatedCount + " product price record at Sales Pricelist.";
-    }
+        return "Berhasil memperbarui " + updatedCount + " record harga produk pada Sales Pricelist.";
+    } 
 }
