@@ -95,7 +95,7 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
 
     @Override
     public String docValidate(PO po, int timing) {
-        return null; // Tidak digunakan
+        return null; 
     }
 
     private void updateSalesPriceList(MOrder order, boolean isRollback) {
@@ -147,7 +147,7 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
                         pstmtPrev.setInt(1, productID);
                         pstmtPrev.setInt(2, order.getC_Order_ID());
                         rsPrev = pstmtPrev.executeQuery();
-                        if (!rsPrev.next()) continue; // tidak ada PO valid sebelumnya
+                        if (!rsPrev.next()) continue; 
                         targetPOPrice = rsPrev.getBigDecimal("PriceActual");
                         poCurrencyID = rsPrev.getInt("C_Currency_ID");
                         convDate = rsPrev.getTimestamp("DateOrdered");
@@ -163,7 +163,7 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
                         conversionTypeID, adClientID, adOrgID);
 
                 if (poPriceConverted == null) {
-                    log.warning("[AUTOPRICE] Tidak ada conversion rate untuk M_Product_ID=" + productID + ". Dilewati.");
+                    log.warning("[AUTOPRICE] No conversion rate for M_Product_ID=" + productID + ". Skipping.");
                     continue;
                 }
 
@@ -192,16 +192,16 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
                     history.setPriceNew(result.salesPrice);
                     history.setMarkupPercent(markup);
                     history.setDescription(isRollback
-                            ? "Rollback dari Void/Reverse PO " + order.getDocumentNo()
-                            : "Auto update dari Complete PO " + order.getDocumentNo());
+                            ? "Rollback from Void/Reverse PO " + order.getDocumentNo()
+                            : "Auto update from Complete PO " + order.getDocumentNo());
                     history.saveEx();
                 } catch (Exception histEx) {
-                    log.severe("[AUTOPRICE] Gagal mencatat XX_PriceHistory product ID=" + productID + ": " + histEx.getMessage());
+                    log.severe("[AUTOPRICE] Failed to log XX_PriceHistory product ID=" + productID + ": " + histEx.getMessage());
                 }
             }
         }
     } catch (Exception e) {
-        log.severe("Gagal memproses rollback/update harga: " + e.getMessage());
+        log.severe("Failed to process price rollback/update: " + e.getMessage());
     } finally {
         DB.close(rsPLV, pstmtPLV);
     }
