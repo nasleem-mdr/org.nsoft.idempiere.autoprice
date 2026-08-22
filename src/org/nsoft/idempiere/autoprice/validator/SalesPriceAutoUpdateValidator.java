@@ -34,6 +34,9 @@ import java.util.logging.Level;
 import org.compiere.model.MClient;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
+import java.sql.Timestamp;
+import org.compiere.model.MPriceList;
+import org.compiere.model.MPriceListVersion;
 import org.compiere.model.MProduct;
 import org.compiere.model.MProductPrice;
 import org.compiere.model.ModelValidationEngine;
@@ -43,6 +46,8 @@ import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.nsoft.idempiere.autoprice.model.MXXPriceHistory;
 import org.nsoft.idempiere.autoprice.util.PriceRoundingUtil;
+import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator;
+import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator.PriceResult;
 
 public class SalesPriceAutoUpdateValidator implements ModelValidator {
 
@@ -94,89 +99,111 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
     }
 
     private void updateSalesPriceList(MOrder order, boolean isRollback) {
-        String sqlPLV = "SELECT M_PriceList_Version_ID FROM M_PriceList_Version WHERE IsAutoUpdateFromPO='Y' AND IsActive='Y'";
-        PreparedStatement pstmtPLV = null;
-        ResultSet rsPLV = null;
+    String sqlPLV = "SELECT M_PriceList_Version_ID FROM M_PriceList_Version WHERE IsAutoUpdateFromPO='Y' AND IsActive='Y'";
+    PreparedStatement pstmtPLV = null;
+    ResultSet rsPLV = null;
 
-        try {
-            pstmtPLV = DB.prepareStatement(sqlPLV, order.get_TrxName());
-            rsPLV = pstmtPLV.executeQuery();
+    try {
+        pstmtPLV = DB.prepareStatement(sqlPLV, order.get_TrxName());
+        rsPLV = pstmtPLV.executeQuery();
 
-            while (rsPLV.next()) {
-                int plvID = rsPLV.getInt("M_PriceList_Version_ID");
+        while (rsPLV.next()) {
+            int plvID = rsPLV.getInt("M_PriceList_Version_ID");
 
-                for (MOrderLine line : order.getLines()) {
-                    int productID = line.getM_Product_ID();
-                    if (productID <= 0) continue;
+            MPriceListVersion plv = new MPriceListVersion(order.getCtx(), plvID, order.get_TrxName());
+            MPriceList priceList = (MPriceList) plv.getM_PriceList();
+            int targetCurrencyID = priceList.getC_Currency_ID();
+            int adClientID = plv.getAD_Client_ID();
+            int adOrgID = plv.getAD_Org_ID();
+            int conversionTypeID = 0;
 
-                    MProduct product = line.getProduct();
-                    BigDecimal markup = (BigDecimal) product.get_Value("MarkupPercent");
-                    if (markup == null || markup.compareTo(BigDecimal.ZERO) <= 0) continue;
+            for (MOrderLine line : order.getLines()) {
+                int productID = line.getM_Product_ID();
+                if (productID <= 0) continue;
 
-                    BigDecimal targetPOPrice = null;
+                MProduct product = line.getProduct();
+                BigDecimal markup = (BigDecimal) product.get_Value("MarkupPercent");
+                if (markup == null || markup.compareTo(BigDecimal.ZERO) <= 0) continue;
 
-                    if (!isRollback) {
-                        // Kasus normal: Gunakan harga dari PO saat ini
-                        targetPOPrice = line.getPriceActual();
-                    } else {
-                        // Kasus Rollback: Cari harga PO terakhir yang masih valid (DocStatus CO/CL, mengabaikan PO ini)
-                        String sqlPreviousPO = "SELECT ol.PriceActual FROM C_OrderLine ol "
-                                + "JOIN C_Order o ON o.C_Order_ID = ol.C_Order_ID "
-                                + "WHERE o.IsSOTrx = 'N' AND o.DocStatus IN ('CO','CL') "
-                                + "AND ol.M_Product_ID = ? AND o.C_Order_ID <> ? "
-                                + "ORDER BY o.DateOrdered DESC, ol.C_OrderLine_ID DESC";
+                BigDecimal targetPOPrice;
+                int poCurrencyID;
+                Timestamp convDate;
 
-                        targetPOPrice = DB.getSQLValueBDEx(order.get_TrxName(), sqlPreviousPO, productID, order.getC_Order_ID());
-                    }
+                if (!isRollback) {
+                    targetPOPrice = line.getPriceActual();
+                    poCurrencyID = order.getC_Currency_ID();
+                    convDate = order.getDateOrdered();
+                } else {
+                    String sqlPrev = "SELECT ol.PriceActual, o.C_Currency_ID, o.DateOrdered FROM C_OrderLine ol "
+                            + "JOIN C_Order o ON o.C_Order_ID = ol.C_Order_ID "
+                            + "WHERE o.IsSOTrx = 'N' AND o.DocStatus IN ('CO','CL') "
+                            + "AND ol.M_Product_ID = ? AND o.C_Order_ID <> ? "
+                            + "ORDER BY o.DateOrdered DESC, ol.C_OrderLine_ID DESC";
 
-                    // Jika ditemukan harga PO acuan (baik dari PO baru atau PO sebelumnya)
-                    if (targetPOPrice != null && targetPOPrice.compareTo(BigDecimal.ZERO) > 0) {
-                        BigDecimal multiplier = BigDecimal.ONE.add(markup.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
-                        BigDecimal rawPrice = targetPOPrice.multiply(multiplier);
-
-                        // Ambil aturan pembulatan (List reference) dari produk, lalu terapkan
-                        String roundingType = product.get_ValueAsString("RoundingType");
-                        BigDecimal newSalesPrice = PriceRoundingUtil.applyRounding(rawPrice, roundingType);
-
-                        MProductPrice pp = MProductPrice.get(order.getCtx(), plvID, productID, order.get_TrxName());
-                        boolean isNewRecord = (pp == null);
-                        BigDecimal oldSalesPrice = isNewRecord ? BigDecimal.ZERO : pp.getPriceStd();
-
-                        if (isNewRecord) {
-                            pp = new MProductPrice(order.getCtx(), plvID, productID, order.get_TrxName());
-                        }
-                        pp.setPriceList(newSalesPrice);
-                        pp.setPriceStd(newSalesPrice);
-                        pp.setPriceLimit(newSalesPrice);
-                        pp.saveEx();
-
-                        log.log(Level.INFO, "[AUTOPRICE] Update harga jual product ID=" + productID
-                                + " rawPrice=" + rawPrice + " roundingType=" + roundingType
-                                + " newSalesPrice=" + newSalesPrice);
-
-                        // Catat ke XX_PriceHistory. Bersifat pendukung/audit trail saja -
-                        // kalau gagal, JANGAN sampai membatalkan Complete PO, cukup di-log.
-                        try {
-                            MXXPriceHistory history = new MXXPriceHistory(order.getCtx(), productID, plvID,
-                                    order.getC_Order_ID(), order.get_TrxName());
-                            history.setPriceOld(oldSalesPrice);
-                            history.setPriceNew(newSalesPrice);
-                            history.setMarkupPercent(markup);
-                            history.setDescription(isRollback
-                                    ? "Rollback dari Void/Reverse PO " + order.getDocumentNo()
-                                    : "Auto update dari Complete PO " + order.getDocumentNo());
-                            history.saveEx();
-                        } catch (Exception histEx) {
-                            log.severe("[AUTOPRICE] Gagal mencatat XX_PriceHistory untuk product ID="
-                                    + productID + ": " + histEx.getMessage());
-                        }
+                    PreparedStatement pstmtPrev = null;
+                    ResultSet rsPrev = null;
+                    try {
+                        pstmtPrev = DB.prepareStatement(sqlPrev, order.get_TrxName());
+                        pstmtPrev.setInt(1, productID);
+                        pstmtPrev.setInt(2, order.getC_Order_ID());
+                        rsPrev = pstmtPrev.executeQuery();
+                        if (!rsPrev.next()) continue; // tidak ada PO valid sebelumnya
+                        targetPOPrice = rsPrev.getBigDecimal("PriceActual");
+                        poCurrencyID = rsPrev.getInt("C_Currency_ID");
+                        convDate = rsPrev.getTimestamp("DateOrdered");
+                    } finally {
+                        DB.close(rsPrev, pstmtPrev);
                     }
                 }
+
+                if (targetPOPrice == null || targetPOPrice.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                BigDecimal poPriceConverted = SalesPriceCalculator.convertToTargetCurrency(
+                        targetPOPrice, poCurrencyID, targetCurrencyID, convDate,
+                        conversionTypeID, adClientID, adOrgID);
+
+                if (poPriceConverted == null) {
+                    log.warning("[AUTOPRICE] Tidak ada conversion rate untuk M_Product_ID=" + productID + ". Dilewati.");
+                    continue;
+                }
+
+                String roundingType = product.get_ValueAsString("RoundingType");
+                PriceResult result = SalesPriceCalculator.calculate(poPriceConverted, markup, roundingType);
+
+                MProductPrice pp = MProductPrice.get(order.getCtx(), plvID, productID, order.get_TrxName());
+                boolean isNewRecord = (pp == null);
+                BigDecimal oldSalesPrice = isNewRecord ? BigDecimal.ZERO : pp.getPriceStd();
+
+                if (isNewRecord) {
+                    pp = new MProductPrice(order.getCtx(), plvID, productID, order.get_TrxName());
+                }
+                pp.setPriceList(result.salesPrice);
+                pp.setPriceStd(result.salesPrice);
+                pp.setPriceLimit(result.priceLimit);
+                pp.saveEx();
+
+                log.log(Level.INFO, "[AUTOPRICE] product ID=" + productID
+                        + " newSalesPrice=" + result.salesPrice + " priceLimit=" + result.priceLimit);
+
+                try {
+                    MXXPriceHistory history = new MXXPriceHistory(order.getCtx(), productID, plvID,
+                            order.getC_Order_ID(), order.get_TrxName());
+                    history.setPriceOld(oldSalesPrice);
+                    history.setPriceNew(result.salesPrice);
+                    history.setMarkupPercent(markup);
+                    history.setDescription(isRollback
+                            ? "Rollback dari Void/Reverse PO " + order.getDocumentNo()
+                            : "Auto update dari Complete PO " + order.getDocumentNo());
+                    history.saveEx();
+                } catch (Exception histEx) {
+                    log.severe("[AUTOPRICE] Gagal mencatat XX_PriceHistory product ID=" + productID + ": " + histEx.getMessage());
+                }
             }
-        } catch (Exception e) {
-            log.severe("Gagal memproses rollback/update harga: " + e.getMessage());
-        } finally {
-            DB.close(rsPLV, pstmtPLV);
         }
+    } catch (Exception e) {
+        log.severe("Gagal memproses rollback/update harga: " + e.getMessage());
+    } finally {
+        DB.close(rsPLV, pstmtPLV);
     }
+  }
 }
