@@ -114,17 +114,14 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
             int plvID = rsPLV.getInt("M_PriceList_Version_ID");
 
             MPriceListVersion plv = new MPriceListVersion(order.getCtx(), plvID, order.get_TrxName());
-            
-            int adClientIDForConfig = order.getAD_Client_ID();
-            BigDecimal spikeThresholdPercent = new BigDecimal(
-                MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientIDForConfig));
-    
             MPriceList priceList = (MPriceList) plv.getM_PriceList();
             int targetCurrencyID = priceList.getC_Currency_ID();
             int adClientID = plv.getAD_Client_ID();
             int adOrgID = plv.getAD_Org_ID();
             int conversionTypeID = 0;
-
+            BigDecimal spikeThresholdPercent = new BigDecimal(
+                MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientID));
+            
             for (MOrderLine line : order.getLines()) {
                 int productID = line.getM_Product_ID();
                 if (productID <= 0) continue;
