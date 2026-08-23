@@ -49,8 +49,9 @@ public class X_XX_PriceHistory extends PO implements I_Persistent {
     static {
         Table_ID = MTable.getTable_ID(Table_Name);
     }
-    
+
     BigDecimal accessLevel = BigDecimal.valueOf(3);
+
     /** Standard Constructor */
     public X_XX_PriceHistory(Properties ctx, int XX_PriceHistory_ID, String trxName) {
         super(ctx, XX_PriceHistory_ID, trxName);
@@ -79,152 +80,182 @@ public class X_XX_PriceHistory extends PO implements I_Persistent {
         return sb.toString();
     }
 
+    /** Column name XX_PriceHistory_ID */
+    public static final String COLUMNNAME_XX_PriceHistory_ID = "XX_PriceHistory_ID";
+
     /** Set Primary Key: XX_PriceHistory_ID */
     public void setXX_PriceHistory_ID(int XX_PriceHistory_ID) {
-        if (XX_PriceHistory_ID < 1) 
-            set_ValueNoCheck("XX_PriceHistory_ID", null);
-        else 
-            set_ValueNoCheck("XX_PriceHistory_ID", Integer.valueOf(XX_PriceHistory_ID));
+        if (XX_PriceHistory_ID < 1)
+            set_ValueNoCheck(COLUMNNAME_XX_PriceHistory_ID, null);
+        else
+            set_ValueNoCheck(COLUMNNAME_XX_PriceHistory_ID, Integer.valueOf(XX_PriceHistory_ID));
     }
 
     /** Get Primary Key: XX_PriceHistory_ID */
     public int getXX_PriceHistory_ID() {
-        Integer ii = (Integer) get_Value("XX_PriceHistory_ID");
+        Integer ii = (Integer) get_Value(COLUMNNAME_XX_PriceHistory_ID);
         if (ii == null) return 0;
         return ii.intValue();
     }
 
+    /** Column name M_Product_ID */
+    public static final String COLUMNNAME_M_Product_ID = "M_Product_ID";
+
     /** Set Product.
      * @param M_Product_ID Product, Service, Item */
     public void setM_Product_ID(int M_Product_ID) {
-        if (M_Product_ID < 1) 
-            set_Value("M_Product_ID", null);
-        else 
-            set_Value("M_Product_ID", Integer.valueOf(M_Product_ID));
+        if (M_Product_ID < 1)
+            set_Value(COLUMNNAME_M_Product_ID, null);
+        else
+            set_Value(COLUMNNAME_M_Product_ID, Integer.valueOf(M_Product_ID));
     }
 
     /** Get Product.
      * @return Product, Service, Item */
     public int getM_Product_ID() {
-        Integer ii = (Integer) get_Value("M_Product_ID");
+        Integer ii = (Integer) get_Value(COLUMNNAME_M_Product_ID);
         if (ii == null) return 0;
         return ii.intValue();
     }
 
+    /** Column name M_PriceList_Version_ID */
+    public static final String COLUMNNAME_M_PriceList_Version_ID = "M_PriceList_Version_ID";
+
     /** Set Price List Version.
      * @param M_PriceList_Version_ID Identifies a particular Version of a Price List */
     public void setM_PriceList_Version_ID(int M_PriceList_Version_ID) {
-        if (M_PriceList_Version_ID < 1) 
-            set_Value("M_PriceList_Version_ID", null);
-        else 
-            set_Value("M_PriceList_Version_ID", Integer.valueOf(M_PriceList_Version_ID));
+        if (M_PriceList_Version_ID < 1)
+            set_Value(COLUMNNAME_M_PriceList_Version_ID, null);
+        else
+            set_Value(COLUMNNAME_M_PriceList_Version_ID, Integer.valueOf(M_PriceList_Version_ID));
     }
 
     /** Get Price List Version.
      * @return Identifies a particular Version of a Price List */
     public int getM_PriceList_Version_ID() {
-        Integer ii = (Integer) get_Value("M_PriceList_Version_ID");
+        Integer ii = (Integer) get_Value(COLUMNNAME_M_PriceList_Version_ID);
         if (ii == null) return 0;
         return ii.intValue();
     }
 
+    /** Column name C_Order_ID */
+    public static final String COLUMNNAME_C_Order_ID = "C_Order_ID";
+
     /** Set Order.
      * @param C_Order_ID Order */
     public void setC_Order_ID(int C_Order_ID) {
-        if (C_Order_ID < 1) 
-            set_Value("C_Order_ID", null);
-        else 
-            set_Value("C_Order_ID", Integer.valueOf(C_Order_ID));
+        if (C_Order_ID < 1)
+            set_Value(COLUMNNAME_C_Order_ID, null);
+        else
+            set_Value(COLUMNNAME_C_Order_ID, Integer.valueOf(C_Order_ID));
     }
 
     /** Get Order.
      * @return Order */
     public int getC_Order_ID() {
-        Integer ii = (Integer) get_Value("C_Order_ID");
+        Integer ii = (Integer) get_Value(COLUMNNAME_C_Order_ID);
         if (ii == null) return 0;
         return ii.intValue();
     }
 
+    /** Column name PriceOld */
+    public static final String COLUMNNAME_PriceOld = "PriceOld";
+
     /** Set Price Old.
      * @param PriceOld Price Old */
     public void setPriceOld(BigDecimal PriceOld) {
-        set_Value("PriceOld", PriceOld);
+        set_Value(COLUMNNAME_PriceOld, PriceOld);
     }
 
     /** Get Price Old.
      * @return Price Old */
     public BigDecimal getPriceOld() {
-        BigDecimal bd = (BigDecimal) get_Value("PriceOld");
+        BigDecimal bd = (BigDecimal) get_Value(COLUMNNAME_PriceOld);
         if (bd == null) return BigDecimal.ZERO;
         return bd;
     }
 
+    /** Column name PriceNew */
+    public static final String COLUMNNAME_PriceNew = "PriceNew";
+
     /** Set Price New.
      * @param PriceNew Price New */
     public void setPriceNew(BigDecimal PriceNew) {
-        set_Value("PriceNew", PriceNew);
+        set_Value(COLUMNNAME_PriceNew, PriceNew);
     }
 
     /** Get Price New.
      * @return Price New */
     public BigDecimal getPriceNew() {
-        BigDecimal bd = (BigDecimal) get_Value("PriceNew");
+        BigDecimal bd = (BigDecimal) get_Value(COLUMNNAME_PriceNew);
         if (bd == null) return BigDecimal.ZERO;
         return bd;
     }
 
+    /** Column name MarkupPercent */
+    public static final String COLUMNNAME_MarkupPercent = "MarkupPercent";
+
     /** Set Markup Percent.
      * @param MarkupPercent Percentage mark up */
     public void setMarkupPercent(BigDecimal MarkupPercent) {
-        set_Value("MarkupPercent", MarkupPercent);
+        set_Value(COLUMNNAME_MarkupPercent, MarkupPercent);
     }
 
     /** Get Markup Percent.
      * @return Percentage mark up */
     public BigDecimal getMarkupPercent() {
-        BigDecimal bd = (BigDecimal) get_Value("MarkupPercent");
+        BigDecimal bd = (BigDecimal) get_Value(COLUMNNAME_MarkupPercent);
         if (bd == null) return BigDecimal.ZERO;
         return bd;
     }
-    
+
     /** Column name IsPriceSpike */
     public static final String COLUMNNAME_IsPriceSpike = "IsPriceSpike";
 
+    /** Set Price Spike.
+     * @param IsPriceSpike Indicates the price change exceeded the spike threshold */
     public void setIsPriceSpike(boolean IsPriceSpike) {
         set_Value(COLUMNNAME_IsPriceSpike, Boolean.valueOf(IsPriceSpike));
     }
 
+    /** Get Price Spike.
+     * @return Indicates the price change exceeded the spike threshold */
     public boolean isPriceSpike() {
         Object oo = get_Value(COLUMNNAME_IsPriceSpike);
-        if (oo != null) {
+        if (oo != null)
             return ((Boolean) oo).booleanValue();
-        }
         return false;
     }
 
     /** Column name VariancePercent */
     public static final String COLUMNNAME_VariancePercent = "VariancePercent";
 
+    /** Set Variance Percent.
+     * @param VariancePercent Percentage variance from the previous price */
     public void setVariancePercent(BigDecimal VariancePercent) {
-        set_ValueNoCheck(COLUMNNAME_VariancePercent, VariancePercent);
+        set_Value(COLUMNNAME_VariancePercent, VariancePercent);
     }
 
+    /** Get Variance Percent.
+     * @return Percentage variance from the previous price */
     public BigDecimal getVariancePercent() {
         BigDecimal bd = (BigDecimal) get_Value(COLUMNNAME_VariancePercent);
-        if (bd == null) {
-            return Env.ZERO;
-        }
+        if (bd == null) return BigDecimal.ZERO;
         return bd;
     }
+
+    /** Column name Description */
+    public static final String COLUMNNAME_Description = "Description";
+
     /** Set Description.
      * @param Description Optional short description of the record */
     public void setDescription(String Description) {
-        set_Value("Description", Description);
+        set_Value(COLUMNNAME_Description, Description);
     }
 
     /** Get Description.
      * @return Optional short description of the record */
     public String getDescription() {
-        return (String) get_Value("Description");
+        return (String) get_Value(COLUMNNAME_Description);
     }
 }
