@@ -99,7 +99,6 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
         return null; 
     }
     
-    // Ganti pemanggilannya di dalam updatePurchasePriceList(), sebelum loop produk:
     int adClientIDForConfig = order.getAD_Client_ID();
     BigDecimal spikeThresholdPercent = new BigDecimal(
             MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientIDForConfig));
@@ -146,10 +145,10 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
                     MProductPrice pp = MProductPrice.get(order.getCtx(), plvID, productID, order.get_TrxName());
                     boolean isNewRecord = (pp == null);
                     BigDecimal oldPrice = isNewRecord ? null : pp.getPriceStd();
-
+                    
                     SalesPriceCalculator.VarianceResult variance =
-                            SalesPriceCalculator.evaluateVariance(oldPrice, poPriceConverted, SPIKE_THRESHOLD_PERCENT);
-
+                            SalesPriceCalculator.evaluateVariance(oldPrice, poPriceConverted, spikeThresholdPercent);
+                
                     if (isNewRecord) {
                         pp = new MProductPrice(order.getCtx(), plvID, productID, order.get_TrxName());
                     }
@@ -182,7 +181,7 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
                 }
             }
         } catch (Exception e) {
-            log.severe("Gagal memproses update Purchase Price List: " + e.getMessage());
+            log.severe("Failed to update Purchase Price List: " + e.getMessage());
         } finally {
             DB.close(rsPLV, pstmtPLV);
         }
