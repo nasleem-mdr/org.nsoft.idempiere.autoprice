@@ -186,7 +186,36 @@ public class X_XX_PriceHistory extends PO implements I_Persistent {
         if (bd == null) return BigDecimal.ZERO;
         return bd;
     }
+    
+    /** Column name IsPriceSpike */
+    public static final String COLUMNNAME_IsPriceSpike = "IsPriceSpike";
 
+    public void setIsPriceSpike(boolean IsPriceSpike) {
+        set_Value(COLUMNNAME_IsPriceSpike, Boolean.valueOf(IsPriceSpike));
+    }
+
+    public boolean isPriceSpike() {
+        Object oo = get_Value(COLUMNNAME_IsPriceSpike);
+        if (oo != null) {
+            return ((Boolean) oo).booleanValue();
+        }
+        return false;
+    }
+
+    /** Column name VariancePercent */
+    public static final String COLUMNNAME_VariancePercent = "VariancePercent";
+
+    public void setVariancePercent(BigDecimal VariancePercent) {
+        set_ValueNoCheck(COLUMNNAME_VariancePercent, VariancePercent);
+    }
+
+    public BigDecimal getVariancePercent() {
+        BigDecimal bd = (BigDecimal) get_Value(COLUMNNAME_VariancePercent);
+        if (bd == null) {
+            return Env.ZERO;
+        }
+        return bd;
+    }
     /** Set Description.
      * @param Description Optional short description of the record */
     public void setDescription(String Description) {
