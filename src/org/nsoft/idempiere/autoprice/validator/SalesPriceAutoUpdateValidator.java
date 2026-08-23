@@ -105,17 +105,17 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
             MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientIDForConfig));
     
     private void updatePurchasePriceList(MOrder order, boolean isRollback) {
-        String sqlPLV = "SELECT plv.M_PriceList_Version_ID FROM M_PriceList_Version plv "
-                + "JOIN M_PriceList pl ON pl.M_PriceList_ID = plv.M_PriceList_ID "
-                + "WHERE plv.IsAutoUpdateFromPO='Y' AND plv.IsActive='Y' AND pl.IsSOPriceList='N'";
-        PreparedStatement pstmtPLV = null;
-        ResultSet rsPLV = null;
+    String sqlPLV = "SELECT plv.M_PriceList_Version_ID FROM M_PriceList_Version plv "
+           + "JOIN M_PriceList pl ON pl.M_PriceList_ID = plv.M_PriceList_ID "
+           + "WHERE plv.IsAutoUpdateFromPO='Y' AND plv.IsActive='Y' AND pl.IsSOPriceList='N'";
+    PreparedStatement pstmtPLV = null;
+    ResultSet rsPLV = null;
 
-        try {
-            pstmtPLV = DB.prepareStatement(sqlPLV, order.get_TrxName());
-            rsPLV = pstmtPLV.executeQuery();
+    try {
+        pstmtPLV = DB.prepareStatement(sqlPLV, order.get_TrxName());
+        rsPLV = pstmtPLV.executeQuery();
 
-            while (rsPLV.next()) {
+        while (rsPLV.next()) {
             int plvID = rsPLV.getInt("M_PriceList_Version_ID");
 
             MPriceListVersion plv = new MPriceListVersion(order.getCtx(), plvID, order.get_TrxName());
