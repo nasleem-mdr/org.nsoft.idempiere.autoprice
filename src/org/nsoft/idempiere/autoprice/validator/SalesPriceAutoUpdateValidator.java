@@ -99,10 +99,6 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
         return null; 
     }
     
-    int adClientIDForConfig = order.getAD_Client_ID();
-    BigDecimal spikeThresholdPercent = new BigDecimal(
-            MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientIDForConfig));
-    
     private void updatePurchasePriceList(MOrder order, boolean isRollback) {
     String sqlPLV = "SELECT plv.M_PriceList_Version_ID FROM M_PriceList_Version plv "
            + "JOIN M_PriceList pl ON pl.M_PriceList_ID = plv.M_PriceList_ID "
@@ -118,6 +114,11 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
             int plvID = rsPLV.getInt("M_PriceList_Version_ID");
 
             MPriceListVersion plv = new MPriceListVersion(order.getCtx(), plvID, order.get_TrxName());
+            
+            int adClientIDForConfig = order.getAD_Client_ID();
+            BigDecimal spikeThresholdPercent = new BigDecimal(
+                MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientIDForConfig));
+    
             MPriceList priceList = (MPriceList) plv.getM_PriceList();
             int targetCurrencyID = priceList.getC_Currency_ID();
             int adClientID = plv.getAD_Client_ID();
