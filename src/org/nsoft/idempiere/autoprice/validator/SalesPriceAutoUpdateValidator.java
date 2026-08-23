@@ -152,28 +152,29 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
                     if (isNewRecord) {
                         pp = new MProductPrice(order.getCtx(), plvID, productID, order.get_TrxName());
                     }
-                    // Purchase price: harga langsung dari PO, tanpa markup/rounding
                     pp.setPriceList(poPriceConverted);
                     pp.setPriceStd(poPriceConverted);
                     pp.setPriceLimit(poPriceConverted);
                     pp.saveEx();
 
                     String desc = isRollback
-                            ? "Rollback Purchase Price dari Void/Reverse PO " + order.getDocumentNo()
-                            : "Auto update Purchase Price dari Complete PO " + order.getDocumentNo();
+                        ? "Rollback Purchase Price dari Void/Reverse PO " + order.getDocumentNo()
+                        : "Auto update Purchase Price dari Complete PO " + order.getDocumentNo();
+
                     if (variance.isSpike) {
-                        desc = "[HARGA MELONJAK " + variance.variancePercent + "%] " + desc;
                         log.warning("[AUTOPRICE] Purchase price spike product ID=" + productID
-                                + " variance=" + variance.variancePercent + "% oldPrice=" + oldPrice
-                                + " newPrice=" + poPriceConverted);
+                           + " variance=" + variance.variancePercent + "% oldPrice=" + oldPrice
+                           + " newPrice=" + poPriceConverted);
                     }
 
                     try {
                         MXXPriceHistory history = new MXXPriceHistory(order.getCtx(), productID, plvID,
-                                order.getC_Order_ID(), order.get_TrxName());
+                            order.getC_Order_ID(), order.get_TrxName());
                         history.setPriceOld(oldPrice == null ? BigDecimal.ZERO : oldPrice);
                         history.setPriceNew(poPriceConverted);
                         history.setDescription(desc);
+                        history.setIsPriceSpike(variance.isSpike);
+                        history.setVariancePercent(variance.variancePercent);
                         history.saveEx();
                     } catch (Exception histEx) {
                         log.severe("[AUTOPRICE] Gagal mencatat Purchase Price History product ID=" + productID + ": " + histEx.getMessage());
