@@ -65,24 +65,24 @@ public class SalesPriceCalculator {
         return new PriceResult(salesPrice, poPriceConverted);
     }
     public static class VarianceResult {
-    public final BigDecimal variancePercent;
-    public final boolean isSpike;
+        public final BigDecimal variancePercent;
+        public final boolean isSpike;
 
-    public VarianceResult(BigDecimal variancePercent, boolean isSpike) {
-        this.variancePercent = variancePercent;
-        this.isSpike = isSpike;
+        public VarianceResult(BigDecimal variancePercent, boolean isSpike) {
+            this.variancePercent = variancePercent;
+            this.isSpike = isSpike;
+        }
     }
-}
 
-/** oldPrice null/0 dianggap belum ada baseline -> bukan spike (baru pertama kali). */
-public static VarianceResult evaluateVariance(BigDecimal oldPrice, BigDecimal newPrice, BigDecimal thresholdPercent) {
-    if (oldPrice == null || oldPrice.compareTo(BigDecimal.ZERO) == 0) {
-        return new VarianceResult(BigDecimal.ZERO, false);
-    }
-    BigDecimal variancePercent = newPrice.subtract(oldPrice)
+    /** oldPrice null/0 dianggap belum ada baseline -> bukan spike (baru pertama kali). */
+    public static VarianceResult evaluateVariance(BigDecimal oldPrice, BigDecimal newPrice, BigDecimal thresholdPercent) {
+        if (oldPrice == null || oldPrice.compareTo(BigDecimal.ZERO) == 0) {
+            return new VarianceResult(BigDecimal.ZERO, false);
+        }
+        BigDecimal variancePercent = newPrice.subtract(oldPrice)
             .divide(oldPrice, 4, RoundingMode.HALF_UP)
             .multiply(new BigDecimal("100"));
-    boolean isSpike = variancePercent.abs().compareTo(thresholdPercent) > 0;
-    return new VarianceResult(variancePercent, isSpike);
-}
+        boolean isSpike = variancePercent.abs().compareTo(thresholdPercent) > 0;
+        return new VarianceResult(variancePercent, isSpike);
+    }
 }
