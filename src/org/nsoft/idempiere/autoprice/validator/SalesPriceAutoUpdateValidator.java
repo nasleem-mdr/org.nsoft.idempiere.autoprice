@@ -48,6 +48,7 @@ import org.nsoft.idempiere.autoprice.model.MXXPriceHistory;
 import org.nsoft.idempiere.autoprice.util.PriceRoundingUtil;
 import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator;
 import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator.PriceResult;
+import org.compiere.util.MSysConfig;
 
 public class SalesPriceAutoUpdateValidator implements ModelValidator {
 
@@ -81,12 +82,12 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
 
             if (!order.isSOTrx() && order.is_ValueChanged(MOrder.COLUMNNAME_DocStatus)) {
                 String docStatus = order.getDocStatus();
-
                 if (MOrder.DOCSTATUS_Completed.equals(docStatus)) {
                     updateSalesPriceList(order, false);
-                } else if (MOrder.DOCSTATUS_Voided.equals(docStatus)
-                        || MOrder.DOCSTATUS_Reversed.equals(docStatus)) {
+                    updatePurchasePriceList(order, false);
+                } else if (MOrder.DOCSTATUS_Voided.equals(docStatus) || MOrder.DOCSTATUS_Reversed.equals(docStatus)) {
                     updateSalesPriceList(order, true);
+                    updatePurchasePriceList(order, true);
                 }
             }
         }
@@ -97,7 +98,96 @@ public class SalesPriceAutoUpdateValidator implements ModelValidator {
     public String docValidate(PO po, int timing) {
         return null; 
     }
+    
+    // Ganti pemanggilannya di dalam updatePurchasePriceList(), sebelum loop produk:
+    int adClientIDForConfig = order.getAD_Client_ID();
+    BigDecimal spikeThresholdPercent = new BigDecimal(
+            MSysConfig.getIntValue("AUTOPRICE_SPIKE_THRESHOLD_PCT", 10, adClientIDForConfig));
+    
+    private void updatePurchasePriceList(MOrder order, boolean isRollback) {
+        String sqlPLV = "SELECT plv.M_PriceList_Version_ID FROM M_PriceList_Version plv "
+                + "JOIN M_PriceList pl ON pl.M_PriceList_ID = plv.M_PriceList_ID "
+                + "WHERE plv.IsAutoUpdateFromPO='Y' AND plv.IsActive='Y' AND pl.IsSOPriceList='N'";
+        PreparedStatement pstmtPLV = null;
+        ResultSet rsPLV = null;
 
+        try {
+            pstmtPLV = DB.prepareStatement(sqlPLV, order.get_TrxName());
+            rsPLV = pstmtPLV.executeQuery();
+
+            while (rsPLV.next()) {
+            int plvID = rsPLV.getInt("M_PriceList_Version_ID");
+
+            MPriceListVersion plv = new MPriceListVersion(order.getCtx(), plvID, order.get_TrxName());
+            MPriceList priceList = (MPriceList) plv.getM_PriceList();
+            int targetCurrencyID = priceList.getC_Currency_ID();
+            int adClientID = plv.getAD_Client_ID();
+            int adOrgID = plv.getAD_Org_ID();
+            int conversionTypeID = 0;
+
+            for (MOrderLine line : order.getLines()) {
+                int productID = line.getM_Product_ID();
+                if (productID <= 0) continue;
+
+                    MProduct product = line.getProduct();
+                    if (!product.isPurchased()) continue; // hanya produk yang memang dibeli
+
+                    BigDecimal poPrice = line.getPriceActual();
+                    if (poPrice == null || poPrice.compareTo(BigDecimal.ZERO) <= 0) continue;
+
+                    BigDecimal poPriceConverted = SalesPriceCalculator.convertToTargetCurrency(
+                            poPrice, order.getC_Currency_ID(), targetCurrencyID, order.getDateOrdered(),
+                            conversionTypeID, adClientID, adOrgID);
+                    if (poPriceConverted == null) {
+                        log.warning("[AUTOPRICE] Tidak ada conversion rate untuk Purchase Price update, M_Product_ID=" + productID);
+                        continue;
+                    }
+
+                    MProductPrice pp = MProductPrice.get(order.getCtx(), plvID, productID, order.get_TrxName());
+                    boolean isNewRecord = (pp == null);
+                    BigDecimal oldPrice = isNewRecord ? null : pp.getPriceStd();
+
+                    SalesPriceCalculator.VarianceResult variance =
+                            SalesPriceCalculator.evaluateVariance(oldPrice, poPriceConverted, SPIKE_THRESHOLD_PERCENT);
+
+                    if (isNewRecord) {
+                        pp = new MProductPrice(order.getCtx(), plvID, productID, order.get_TrxName());
+                    }
+                    // Purchase price: harga langsung dari PO, tanpa markup/rounding
+                    pp.setPriceList(poPriceConverted);
+                    pp.setPriceStd(poPriceConverted);
+                    pp.setPriceLimit(poPriceConverted);
+                    pp.saveEx();
+
+                    String desc = isRollback
+                            ? "Rollback Purchase Price dari Void/Reverse PO " + order.getDocumentNo()
+                            : "Auto update Purchase Price dari Complete PO " + order.getDocumentNo();
+                    if (variance.isSpike) {
+                        desc = "[HARGA MELONJAK " + variance.variancePercent + "%] " + desc;
+                        log.warning("[AUTOPRICE] Purchase price spike product ID=" + productID
+                                + " variance=" + variance.variancePercent + "% oldPrice=" + oldPrice
+                                + " newPrice=" + poPriceConverted);
+                    }
+
+                    try {
+                        MXXPriceHistory history = new MXXPriceHistory(order.getCtx(), productID, plvID,
+                                order.getC_Order_ID(), order.get_TrxName());
+                        history.setPriceOld(oldPrice == null ? BigDecimal.ZERO : oldPrice);
+                        history.setPriceNew(poPriceConverted);
+                        history.setDescription(desc);
+                        history.saveEx();
+                    } catch (Exception histEx) {
+                        log.severe("[AUTOPRICE] Gagal mencatat Purchase Price History product ID=" + productID + ": " + histEx.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.severe("Gagal memproses update Purchase Price List: " + e.getMessage());
+        } finally {
+            DB.close(rsPLV, pstmtPLV);
+        }
+    }
+    
     private void updateSalesPriceList(MOrder order, boolean isRollback) {
     String sqlPLV = "SELECT M_PriceList_Version_ID FROM M_PriceList_Version WHERE IsAutoUpdateFromPO='Y' AND IsActive='Y'";
     PreparedStatement pstmtPLV = null;
