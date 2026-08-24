@@ -95,8 +95,8 @@ public class UpdateSalesPriceFromPO extends SvrProcess {
                             conversionTypeID, adClientID, adOrgID);
 
                     if (poPriceConverted == null) {
-                        log.warning("Tidak ada conversion rate " + poCurrencyID + "->" + targetCurrencyID
-                                + " untuk M_Product_ID=" + productID + ". Dilewati.");
+                        log.warning("No conversion rate " + poCurrencyID + "->" + targetCurrencyID 
+                                               + " for M_Product_ID=" + productID + ". Skipping.");
                         continue;
                     }
 
