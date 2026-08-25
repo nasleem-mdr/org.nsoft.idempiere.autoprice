@@ -48,7 +48,7 @@ import org.nsoft.idempiere.autoprice.model.MXXPriceHistory;
 import org.nsoft.idempiere.autoprice.util.PriceRoundingUtil;
 import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator;
 import org.nsoft.idempiere.autoprice.util.SalesPriceCalculator.PriceResult;
-import org.compiere.util.MSysConfig;
+import org.compiere.model.MSysConfig;
 
 public class SalesPriceAutoUpdateValidator implements ModelValidator {
 
